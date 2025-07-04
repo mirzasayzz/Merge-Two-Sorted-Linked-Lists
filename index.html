@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge Sorted Lists Visualization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            text-align: center;
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .input-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .list-input {
+            width: 45%;
+        }
+        .numbers-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .number-box {
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            font-size: 18px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .visualization {
+            margin-top: 30px;
+        }
+        .list-visualization {
+            margin-bottom: 20px;
+        }
+        .list-title {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .list-nodes {
+            display: flex;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+        .node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 10px;
+            transition: all 0.5s ease;
+        }
+        .node-data {
+            width: 40px;
+            height: 40px;
+            background-color: #3498db;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+        }
+        .node-pointer {
+            width: 50px;
+            height: 2px;
+            background-color: #333;
+            position: relative;
+            margin-top: 10px;
+        }
+        .node-pointer:after {
+            content: "";
+            position: absolute;
+            right: 0;
+            top: -4px;
+            border-left: 8px solid #333;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+        .merged-node {
+            background-color: #27ae60;
+        }
+        .active-node {
+            background-color: #e74c3c;
+            transform: scale(1.1);
+        }
+        .log {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 150px;
+            overflow-y: auto;
+            background-color: white;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Merge Sorted Lists Visualization</h1>
+    </div>
+
+    <div class="input-container">
+        <div class="list-input">
+            <h3>First List (Sorted)</h3>
+            <div>
+                <label for="list1-count">Number of elements:</label>
+                <input type="number" id="list1-count" min="1" max="10" value="3">
+                <button onclick="generateInputBoxes(1)">Generate</button>
+            </div>
+            <div id="list1-inputs" class="numbers-input"></div>
+        </div>
+
+        <div class="list-input">
+            <h3>Second List (Sorted)</h3>
+            <div>
+                <label for="list2-count">Number of elements:</label>
+                <input type="number" id="list2-count" min="1" max="10" value="3">
+                <button onclick="generateInputBoxes(2)">Generate</button>
+            </div>
+            <div id="list2-inputs" class="numbers-input"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn" onclick="startMerging()">Start Merge Animation</button>
+        <button id="resetBtn" onclick="resetVisualization()">Reset</button>
+    </div>
+
+    <div class="visualization">
+        <div class="list-visualization">
+            <div class="list-title">First List:</div>
+            <div id="list1-visual" class="list-nodes"></div>
+        </div>
+        
+        <div class="list-visualization">
+            <div class="list-title">Second List:</div>
+            <div id="list2-visual" class="list-nodes"></div>
+        </div>
+        
+        <div class="list-visualization">
+            <div class="list-title">Merged List:</div>
+            <div id="merged-visual" class="list-nodes"></div>
+        </div>
+    </div>
+
+    <div class="log">
+        <div id="log-container"></div>
+    </div>
+
+    <script>
+        // Generate input boxes based on count
+        function generateInputBoxes(listNum) {
+            const count = parseInt(document.getElementById(`list${listNum}-count`).value);
+            const container = document.getElementById(`list${listNum}-inputs`);
+            
+            container.innerHTML = '';
+            
+            for (let i = 0; i < count; i++) {
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'number-box';
+                input.id = `list${listNum}-item-${i}`;
+                container.appendChild(input);
+            }
+        }
+
+        // Node class for linked list
+        class Node {
+            constructor(data) {
+                this.data = data;
+                this.next = null;
+            }
+        }
+
+        // Create linked list from input values
+        function createLinkedList(listNum) {
+            const count = parseInt(document.getElementById(`list${listNum}-count`).value);
+            let head = null;
+            let tail = null;
+            
+            for (let i = 0; i < count; i++) {
+                const inputElement = document.getElementById(`list${listNum}-item-${i}`);
+                if (inputElement && inputElement.value) {
+                    const val = parseInt(inputElement.value);
+                    const newNode = new Node(val);
+                    
+                    if (!head) {
+                        head = newNode;
+                        tail = newNode;
+                    } else {
+                        tail.next = newNode;
+                        tail = newNode;
+                    }
+                }
+            }
+            
+            return head;
+        }
+
+        // Check if a linked list is sorted in ascending order
+        function isSorted(head) {
+            if (!head || !head.next) {
+                return true; // Empty list or single element list is considered sorted
+            }
+            
+            let current = head;
+            while (current.next) {
+                if (current.data > current.next.data) {
+                    return false; // Found a pair that's out of order
+                }
+                current = current.next;
+            }
+            
+            return true; // All elements are in order
+        }
+
+        // Display linked list visually
+        function displayList(head, containerId, clearContainer = true) {
+            const container = document.getElementById(containerId);
+            if (clearContainer) {
+                container.innerHTML = '';
+            }
+            
+            let current = head;
+            while (current) {
+                const nodeDiv = document.createElement('div');
+                nodeDiv.className = 'node';
+                
+                const dataDiv = document.createElement('div');
+                dataDiv.className = 'node-data';
+                dataDiv.textContent = current.data;
+                
+                nodeDiv.appendChild(dataDiv);
+                
+                if (current.next) {
+                    const pointerDiv = document.createElement('div');
+                    pointerDiv.className = 'node-pointer';
+                    nodeDiv.appendChild(pointerDiv);
+                }
+                
+                container.appendChild(nodeDiv);
+                current = current.next;
+            }
+        }
+
+        // Add a log entry
+        function addLog(message) {
+            const logContainer = document.getElementById('log-container');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = message;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Start the merge animation
+        async function startMerging() {
+            resetVisualization();
+            
+            // Create linked lists
+            const list1 = createLinkedList(1);
+            const list2 = createLinkedList(2);
+            
+            if (!list1 && !list2) {
+                addLog("Both lists are empty. Please enter some numbers.");
+                return;
+            }
+            
+            // Check if lists are sorted
+            if (!isSorted(list1)) {
+                addLog("ERROR: First list is not sorted in ascending order!");
+                displayList(list1, 'list1-visual');
+                return;
+            }
+            
+            if (!isSorted(list2)) {
+                addLog("ERROR: Second list is not sorted in ascending order!");
+                displayList(list2, 'list2-visual');
+                return;
+            }
+            
+            // Display input lists
+            displayList(list1, 'list1-visual');
+            displayList(list2, 'list2-visual');
+            
+            addLog("Starting merge process...");
+            
+            // Disable buttons during animation
+            document.getElementById('startBtn').disabled = true;
+            
+            // Perform merge with animation
+            await mergeSortedLists(list1, list2);
+            
+            // Enable buttons after animation
+            document.getElementById('startBtn').disabled = false;
+            
+            addLog("Merge completed!");
+        }
+
+        // Reset the visualization
+        function resetVisualization() {
+            document.getElementById('list1-visual').innerHTML = '';
+            document.getElementById('list2-visual').innerHTML = '';
+            document.getElementById('merged-visual').innerHTML = '';
+            document.getElementById('log-container').innerHTML = '';
+            document.getElementById('startBtn').disabled = false;
+        }
+
+        // Pause for animation
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Merge sorted lists with animation
+        async function mergeSortedLists(list1, list2) {
+            // If either list is empty, return the other list
+            if (!list1) {
+                addLog("First list is empty, returning second list");
+                displayList(list2, 'merged-visual');
+                return list2;
+            }
+            if (!list2) {
+                addLog("Second list is empty, returning first list");
+                displayList(list1, 'merged-visual');
+                return list1;
+            }
+            
+            // Create a dummy node as the head of the result list
+            let dummyNode = new Node(0);
+            // Pointer to track the current position in the result list
+            let current = dummyNode;
+            
+            let list1Ptr = list1;
+            let list2Ptr = list2;
+            
+            const list1Nodes = document.querySelectorAll('#list1-visual .node-data');
+            const list2Nodes = document.querySelectorAll('#list2-visual .node-data');
+            
+            let list1Index = 0;
+            let list2Index = 0;
+            
+            // Traverse both lists
+            while (list1Ptr && list2Ptr) {
+                // Highlight current nodes being compared
+                if (list1Index < list1Nodes.length) {
+                    list1Nodes[list1Index].classList.add('active-node');
+                }
+                if (list2Index < list2Nodes.length) {
+                    list2Nodes[list2Index].classList.add('active-node');
+                }
+                
+                await sleep(1000);
+                
+                // Compare current nodes from both lists
+                if (list1Ptr.data <= list2Ptr.data) {
+                    addLog(`Comparing ${list1Ptr.data} <= ${list2Ptr.data}: Taking ${list1Ptr.data} from first list`);
+                    current.next = new Node(list1Ptr.data);
+                    list1Ptr = list1Ptr.next;
+                    list1Index++;
+                } else {
+                    addLog(`Comparing ${list1Ptr.data} > ${list2Ptr.data}: Taking ${list2Ptr.data} from second list`);
+                    current.next = new Node(list2Ptr.data);
+                    list2Ptr = list2Ptr.next;
+                    list2Index++;
+                }
+                
+                current = current.next;
+                
+                // Display the current state of the merged list
+                displayList(dummyNode.next, 'merged-visual');
+                
+                // Remove highlight from current nodes
+                document.querySelectorAll('.active-node').forEach(node => {
+                    node.classList.remove('active-node');
+                });
+                
+                await sleep(500);
+            }
+            
+            // If one list is not fully traversed, append the remaining nodes
+            if (list1Ptr) {
+                addLog("Second list exhausted, appending remainder of first list");
+                while (list1Index < list1Nodes.length) {
+                    list1Nodes[list1Index].classList.add('active-node');
+                    await sleep(500);
+                    list1Nodes[list1Index].classList.remove('active-node');
+                    list1Index++;
+                }
+                current.next = list1Ptr;
+            } else if (list2Ptr) {
+                addLog("First list exhausted, appending remainder of second list");
+                while (list2Index < list2Nodes.length) {
+                    list2Nodes[list2Index].classList.add('active-node');
+                    await sleep(500);
+                    list2Nodes[list2Index].classList.remove('active-node');
+                    list2Index++;
+                }
+                current.next = list2Ptr;
+            }
+            
+            // Final display of merged list
+            displayList(dummyNode.next, 'merged-visual');
+            
+            // Highlight merged nodes
+            document.querySelectorAll('#merged-visual .node-data').forEach(node => {
+                node.classList.add('merged-node');
+            });
+            
+            return dummyNode.next;
+        }
+
+        // Generate default input boxes
+        generateInputBoxes(1);
+        generateInputBoxes(2);
+    </script>
+</body>
+</html> 
